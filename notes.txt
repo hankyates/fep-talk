@@ -1,0 +1,5 @@
+
+let createChartData = (labels, series) => ({labels, series: [series]})
+
+let pricesData = createChartData([], [])
+let pricesChart = new Chartist.Line('.prices', pricesData)
