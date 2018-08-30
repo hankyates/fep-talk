@@ -1,5 +1,57 @@
+ws$ = rxjs.webSocket.webSocket('wss://ws-feed.pro.coinbase.com')
+ws$.next({
+  "type": "subscribe",
+  "product_ids": [
+    "ETH-USD",
+  ],
+  "channels": [
+    "heartbeat",
+    {
+      "name": "ticker",
+      "product_ids": [
+        "ETH-USD",
+      ]
+    }
+  ]
+})
+
+ws$.pipe(
+  rxjs.operators.filter(v => v.type === 'ticker'),
+  rxjs.operators.map(v => parseFloat(v.price)),
+  rxjs.operators.bufferTime(10000),
+  rxjs.operators.tap(console.log),
+  rxjs.operators.map((val) =>
+    val.reduce((acc, cur) => acc += cur, 0) / val.length
+  ),
+).subscribe(console.log)
+
+let price$ = ws$.pipe(
+  rxjs.operators.filter(v => v.type === 'ticker'),
+  rxjs.operators.map(v => parseFloat(v.price)),
+)
+
+let average$ = price$.pipe(
+  rxjs.operators.bufferTime(10000),
+  rxjs.operators.map((val) =>
+    val.reduce((acc, cur) => acc += cur, 0) / val.length
+  ),
+)
 
 let createChartData = (labels, series) => ({labels, series: [series]})
 
 let pricesData = createChartData([], [])
 let pricesChart = new Chartist.Line('.prices', pricesData)
+
+rxjs.zip(
+  price$,
+  average$,
+).subscribe(([price, average]) => {
+  console.log(price, average)
+  pricesChart.update(
+    createChartData(
+      [],
+      [...pricesChart.data.series[0], price]
+    )
+  )
+})
+
