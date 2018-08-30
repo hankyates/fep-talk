@@ -15,31 +15,19 @@ ws$.next({
   ]
 })
 
-ws$.pipe(
-  rxjs.operators.filter(v => v.type === 'ticker'),
-  rxjs.operators.map(v => parseFloat(v.price)),
-  rxjs.operators.bufferTime(10000),
-  rxjs.operators.tap(console.log),
-  rxjs.operators.map((val) =>
-    val.reduce((acc, cur) => acc += cur, 0) / val.length
-  ),
-).subscribe(console.log)
-
 let price$ = ws$.pipe(
   rxjs.operators.filter(v => v.type === 'ticker'),
   rxjs.operators.map(v => parseFloat(v.price)),
 )
 
 let average$ = price$.pipe(
-  rxjs.operators.bufferTime(10000),
-  rxjs.operators.map((val) =>
-    val.reduce((acc, cur) => acc += cur, 0) / val.length
-  ),
+  rxjs.operators.scan((acc, cur) => [...acc, cur], []),
+  rxjs.operators.map(prices => prices.reduce((a, c) => a + c, 0) / prices.length),
 )
 
-let createChartData = (labels, series) => ({labels, series: [series]})
+let createChartData = (labels, series) => ({labels, series})
 
-let pricesData = createChartData([], [])
+let pricesData = createChartData([], [[], []])
 let pricesChart = new Chartist.Line('.prices', pricesData)
 
 rxjs.zip(
@@ -50,7 +38,10 @@ rxjs.zip(
   pricesChart.update(
     createChartData(
       [],
-      [...pricesChart.data.series[0], price]
+      [
+        [...pricesChart.data.series[0], price],
+        [...pricesChart.data.series[1], average],
+      ]
     )
   )
 })
